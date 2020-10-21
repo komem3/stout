@@ -8,15 +8,7 @@ import (
 	"strings"
 )
 
-type orderDefine struct {
-	order  uint
-	filed  string
-	define interface{}
-}
-
-type structDefine map[string]interface{}
-
-var basicMap = structDefine{
+var basicMap = map[string]interface{}{
 	"string":     "string",
 	"int":        1,
 	"int8":       1,
@@ -30,14 +22,14 @@ var basicMap = structDefine{
 	"uint64":     1,
 	"float32":    "1.0",
 	"float64":    "1.0",
-	"complex64":  "1.0",
-	"complex128": "1.0",
+	"complex64":  "1i",
+	"complex128": "1i",
 	"bool":       true,
 	"byte":       byte('a'),
 	"rune":       rune('a'),
 }
 
-func stType2Map(path string, stType string) (structDefine, error) {
+func stType2Map(path, stType string) (orderDefine, error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, path, nil, 0)
 	if err != nil {
@@ -58,21 +50,20 @@ func stType2Map(path string, stType string) (structDefine, error) {
 		}
 	}
 	if fromSpec == nil {
-		return nil, fmt.Errorf("not found %s\n", fromSt)
+		return nil, fmt.Errorf("not found %s\n", *fromSt)
 	}
 
 	st, ok := fromSpec.Type.(*ast.StructType)
 	if !ok {
-		return nil, fmt.Errorf("%s is not struct\n", fromSt)
+		return nil, fmt.Errorf("%s is not struct\n", *fromSt)
 	}
 
 	return convertMap(st), nil
 }
 
 // TODO: jsonタグの認識
-// TODO: test code
-func convertMap(st *ast.StructType) structDefine {
-	dstJson := make(map[string]interface{})
+func convertMap(st *ast.StructType) orderDefine {
+	var defines orderDefine
 	for _, f := range st.Fields.List {
 		if len(f.Names) == 0 ||
 			strings.ToUpper(f.Names[0].Name)[0] != f.Names[0].Name[0] {
@@ -103,10 +94,16 @@ func convertMap(st *ast.StructType) structDefine {
 		if basicValue, ok := basicMap[ident.Name]; ok {
 			if len(array) != 0 {
 				array[0] = basicValue
-				dstJson[fname] = array
+				defines = append(defines, structDefine{
+					field:  fname,
+					define: array,
+				})
 				continue
 			}
-			dstJson[fname] = basicValue
+			defines = append(defines, structDefine{
+				field:  fname,
+				define: basicValue,
+			})
 			continue
 		}
 
@@ -114,22 +111,34 @@ func convertMap(st *ast.StructType) structDefine {
 		if ident, ok := spec.Type.(*ast.Ident); ok {
 			if len(array) != 0 {
 				array[0] = basicMap[ident.Name]
-				dstJson[fname] = array
+				defines = append(defines, structDefine{
+					field:  fname,
+					define: array,
+				})
 				continue
 			}
-			dstJson[fname] = basicMap[ident.Name]
+			defines = append(defines, structDefine{
+				field:  fname,
+				define: basicMap[ident.Name],
+			})
 			continue
 		}
 		if strct, ok := spec.Type.(*ast.StructType); ok {
 			if len(array) != 0 {
 				array[0] = convertMap(strct)
-				dstJson[fname] = array
+				defines = append(defines, structDefine{
+					field:  fname,
+					define: array,
+				})
 				continue
 			}
-			dstJson[fname] = convertMap(strct)
+			defines = append(defines, structDefine{
+				field:  fname,
+				define: convertMap(strct),
+			})
 			continue
 		}
 		panic(fmt.Sprintf("not convert %v", f))
 	}
-	return dstJson
+	return defines
 }

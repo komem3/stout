@@ -72,24 +72,37 @@ func TestStType2Json(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			var (
-				got  = new(bytes.Buffer)
-				want = new(bytes.Buffer)
-			)
 
-			encoder := json.NewEncoder(want)
-			encoder.SetIndent("", "  ")
-			if err := encoder.Encode(tt.want.outStruct); err != nil {
-				t.Fatal(err)
+			var testFunc = func(t *testing.T, format bool) {
+				var (
+					got  = new(bytes.Buffer)
+					want = new(bytes.Buffer)
+				)
+				encoder := json.NewEncoder(want)
+				if format {
+					encoder.SetIndent("", "  ")
+				}
+
+				if err := encoder.Encode(tt.want.outStruct); err != nil {
+					t.Fatal(err)
+				}
+
+				op := newJsonOption(tt.given.path, tt.given.stType, !format)
+				err := stType2Json(got, op)
+				if diff := cmp.Diff(err, tt.want.err, cmpopts.EquateErrors()); diff != "" {
+					t.Errorf("error: got(-) want(+)\n%s\n", diff)
+				}
+				if diff := cmp.Diff(got.Bytes(), want.Bytes()); diff != "" {
+					t.Errorf("resutl: got(-) want(+)\n%s\n", diff)
+				}
 			}
 
-			err := stType2Json(tt.given.path, tt.given.stType, got)
-			if diff := cmp.Diff(err, tt.want.err, cmpopts.EquateErrors()); diff != "" {
-				t.Errorf("error: got(-) want(+)\n%s\n", diff)
-			}
-			if diff := cmp.Diff(got.Bytes(), want.Bytes()); diff != "" {
-				t.Errorf("resutl: got(-) want(+)\n%s\n", diff)
-			}
+			t.Run("format json", func(t *testing.T) {
+				testFunc(t, true)
+			})
+			t.Run("raw json", func(t *testing.T) {
+				testFunc(t, false)
+			})
 		})
 	}
 }

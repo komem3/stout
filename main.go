@@ -7,17 +7,21 @@ import (
 	"os"
 )
 
-var srcPath = *flag.String("path", "", "Definetion file. (required)")
-var fromSt = *flag.String("type", "", "Target struct type. (required)")
+var srcPath = flag.String("path", "", "Definetion file. (required)")
+var fromSt = flag.String("type", "", "Target struct type. (required)")
+var noformat = flag.Bool("no-format", false, "Not format.")
 
 func main() {
 	flag.Parse()
-	if srcPath == "" || fromSt == "" {
+	if *srcPath == "" || *fromSt == "" {
+		fmt.Printf("%v, %v\n", srcPath, fromSt)
 		flag.Usage()
 		os.Exit(1)
 	}
+
+	op := newJsonOption(*srcPath, *fromSt, *noformat)
 	writer := bufio.NewWriter(os.Stdout)
-	if err := stType2Json(srcPath, fromSt, writer); err != nil {
+	if err := stType2Json(writer, op); err != nil {
 		Fatalf(err.Error())
 	}
 	if err := writer.Flush(); err != nil {
