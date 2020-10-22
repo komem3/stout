@@ -17,7 +17,6 @@ func TestStType2Json(t *testing.T) {
 		}
 		want struct {
 			outStruct interface{}
-			outJson   []byte
 			err       error
 		}
 	)
@@ -29,42 +28,47 @@ func TestStType2Json(t *testing.T) {
 		{
 			"SampleJson",
 			given{
-				path:   "./struct_test.go",
+				path:   "./define_test.go",
 				stType: "SampleJson",
 			},
 			want{
 				outStruct: SampleJson{
 					ID:      1,
 					Content: "string",
+					Tag:     1,
+					Ignore:  1,
+					Hyphen:  1,
 					PStr:    pStr("string"),
 					Pointer: &Embbading{
-						ID: "string",
+						IDString: "string",
 					},
 					Struct: Embbading{
-						ID: "string",
+						IDString: "string",
 					},
 					Array: []string{"string"},
 					ArraySct: []Embbading{
 						{
-							ID: "string",
+							IDString: "string",
 						},
 					},
 					ArrayPSct: []*Embbading{
 						{
-							ID: "string",
+							IDString: "string",
 						},
 					},
 					Uinter: 1,
 					Embbading: Embbading{
-						ID: "string",
+						IDString: "string",
 					},
+					Integer: 1,
+					PString: func(str PString) *PString { return &str }("string"),
 					PEmb: &PEmb{
 						Content: "string",
+						Next:    "string",
 					},
-					private: "",
+					private: "private",
 				},
-				outJson: []byte(""),
-				err:     nil,
+				err: nil,
 			},
 		},
 	}

@@ -61,20 +61,52 @@ func stType2Map(path, stType string) (orderDefine, error) {
 	return convertMap(st), nil
 }
 
-// TODO: jsonタグの認識
 func convertMap(st *ast.StructType) orderDefine {
 	var defines orderDefine
 	for _, f := range st.Fields.List {
-		if len(f.Names) == 0 ||
-			strings.ToUpper(f.Names[0].Name)[0] != f.Names[0].Name[0] {
+		if len(f.Names) == 0 { // Embedded type
+			var ident *ast.Ident
+			if ptr, ok := f.Type.(*ast.StarExpr); ok {
+				ident = ptr.X.(*ast.Ident)
+			} else {
+				ident = f.Type.(*ast.Ident)
+			}
+
+			if ident.Obj == nil { // built-in type
+				continue
+			}
+
+			spec := ident.Obj.Decl.(*ast.TypeSpec)
+			switch v := spec.Type.(type) {
+			case *ast.Ident: // type built-in type
+				defines = append(defines,
+					getStructDefine(ident.Name, "", v.Name, basicMap[v.Name], nil))
+			case *ast.StructType: // type struct
+				ds := convertMap(v)
+				for _, d := range ds {
+					defines = append(defines,
+						getStructDefine(d.field, "", d.typ, d.define, nil))
+				}
+			default:
+				panic(fmt.Sprintf("unexpected type: %#v", spec.Type))
+			}
 			continue
 		}
-		fname := f.Names[0].Name
+		if strings.ToUpper(f.Names[0].Name)[0] != f.Names[0].Name[0] {
+			// private field
+			continue
+		}
 
 		var (
+			fname = f.Names[0].Name
+			tag   string
 			ident *ast.Ident
 			array []interface{}
 		)
+		if f.Tag != nil {
+			tag = f.Tag.Value
+		}
+
 		switch v := f.Type.(type) {
 		case *ast.StarExpr:
 			ident = v.X.(*ast.Ident)
@@ -91,54 +123,43 @@ func convertMap(st *ast.StructType) orderDefine {
 			panic(fmt.Sprintf("unexpected type: %#v", f.Type))
 		}
 
-		if basicValue, ok := basicMap[ident.Name]; ok {
-			if len(array) != 0 {
-				array[0] = basicValue
-				defines = append(defines, structDefine{
-					field:  fname,
-					define: array,
-				})
-				continue
-			}
-			defines = append(defines, structDefine{
-				field:  fname,
-				define: basicValue,
-			})
+		if basicValue, ok := basicMap[ident.Name]; ok { // built-in type
+			defines = append(defines,
+				getStructDefine(fname, tag, ident.Name, basicValue, array))
 			continue
 		}
 
 		spec := ident.Obj.Decl.(*ast.TypeSpec)
-		if ident, ok := spec.Type.(*ast.Ident); ok {
-			if len(array) != 0 {
-				array[0] = basicMap[ident.Name]
-				defines = append(defines, structDefine{
-					field:  fname,
-					define: array,
-				})
-				continue
-			}
-			defines = append(defines, structDefine{
-				field:  fname,
-				define: basicMap[ident.Name],
-			})
+		if ident, ok := spec.Type.(*ast.Ident); ok { // type built-in type
+			defines = append(defines,
+				getStructDefine(fname, tag, ident.Name, basicMap[ident.Name], array))
 			continue
 		}
-		if strct, ok := spec.Type.(*ast.StructType); ok {
-			if len(array) != 0 {
-				array[0] = convertMap(strct)
-				defines = append(defines, structDefine{
-					field:  fname,
-					define: array,
-				})
-				continue
-			}
-			defines = append(defines, structDefine{
-				field:  fname,
-				define: convertMap(strct),
-			})
+
+		if strct, ok := spec.Type.(*ast.StructType); ok { // type struct
+			defines = append(defines,
+				getStructDefine(fname, tag, ident.Name, convertMap(strct), array))
 			continue
 		}
 		panic(fmt.Sprintf("not convert %v", f))
 	}
 	return defines
+}
+
+func getStructDefine(fname, tag, typ string, value interface{}, array []interface{}) structDefine {
+	if len(array) != 0 {
+		array[0] = value
+		return structDefine{
+			field:  fname,
+			tag:    tag,
+			typ:    typ,
+			define: array,
+		}
+	}
+	return structDefine{
+		field:  fname,
+		tag:    tag,
+		typ:    typ,
+		define: value,
+	}
 }

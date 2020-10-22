@@ -1,18 +1,24 @@
 package main
 
 type Embbading struct {
-	ID string
+	IDString string
 }
 
 type PEmb struct {
 	Content string
+	Next    string
 }
 
 type Integer uint64
 
+type PString string
+
 type SampleJson struct {
-	ID        int64
-	Content   string `json:"super_content"`
+	ID        int64  `custome:"custome_tag"`
+	Content   string `json:"super_content" custom:"custom_tag"`
+	Tag       int64  `json:"tag,omitempty,string"`
+	Ignore    int64  `json:"-"`
+	Hyphen    int8   `json:"-,"`
 	PStr      *string
 	Pointer   *Embbading
 	Struct    Embbading
@@ -21,6 +27,8 @@ type SampleJson struct {
 	ArrayPSct []*Embbading
 	Uinter    Integer
 	Embbading
+	Integer
+	*PString
 	*PEmb
 	private string
 }
