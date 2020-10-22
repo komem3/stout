@@ -1,4 +1,4 @@
-module stjson
+module stout
 
 go 1.15
 

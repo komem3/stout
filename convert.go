@@ -119,6 +119,8 @@ func convertMap(st *ast.StructType) orderDefine {
 				ident = v.Elt.(*ast.Ident)
 			}
 			array = make([]interface{}, 1)
+		case *ast.SelectorExpr:
+			panic(fmt.Sprintf("other package type: %#v", f.Type))
 		default:
 			panic(fmt.Sprintf("unexpected type: %#v", f.Type))
 		}
