@@ -27,7 +27,6 @@ $ stout -path ./define_test.go -type SampleJson
 
 Not yet supported
 
-- other package types (time.Time)
 - `json.Marshaler`
 
 ## Author

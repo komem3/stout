@@ -25,7 +25,7 @@ func newJsonOption(path, stType string, noformat bool) jsonOption {
 }
 
 func stType2Json(writer io.Writer, op jsonOption) error {
-	defineMap, err := stType2Map(op.path, op.stType)
+	defineMap, err := StType2Map(op.path, op.stType)
 	if err != nil {
 		return err
 	}
