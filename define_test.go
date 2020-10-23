@@ -1,5 +1,10 @@
 package main
 
+import (
+	"go/ast"
+	"stout/internal/testutil"
+)
+
 type Embbading struct {
 	IDString string
 }
@@ -25,11 +30,14 @@ type SampleJson struct {
 	Array     []string
 	ArraySct  []Embbading
 	ArrayPSct []*Embbading
+	Other     ast.ArrayType
+	Internal  testutil.OtherPkg
 	Uinter    Integer
 	Embbading
 	Integer
 	*PString
 	*PEmb
+	*testutil.OtherPkg
 	private string
 }
 

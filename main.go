@@ -5,11 +5,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 )
 
 var srcPath = flag.String("path", "", "Definetion file. (required)")
 var fromSt = flag.String("type", "", "Target struct type. (required)")
 var noformat = flag.Bool("no-format", false, "Not format.")
+
+var now = time.Now()
 
 func main() {
 	flag.Parse()

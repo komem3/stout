@@ -38,6 +38,9 @@ func (o orderDefine) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(o) == 1 && o[0].field == "" {
+		return json.Marshal(o[0].define)
+	}
 	for i, d := range o {
 		field := d.field
 		define := d.define

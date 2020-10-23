@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"go/ast"
+	"stout/internal/testutil"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -56,6 +58,14 @@ func TestStType2Json(t *testing.T) {
 							IDString: "string",
 						},
 					},
+					Other: ast.ArrayType{
+						Lbrack: 1,
+						Len:    nil,
+						Elt:    nil,
+					},
+					Internal: testutil.OtherPkg{
+						PkgContent: "string",
+					},
 					Uinter: 1,
 					Embbading: Embbading{
 						IDString: "string",
@@ -65,6 +75,9 @@ func TestStType2Json(t *testing.T) {
 					PEmb: &PEmb{
 						Content: "string",
 						Next:    "string",
+					},
+					OtherPkg: &testutil.OtherPkg{
+						PkgContent: "string",
 					},
 					private: "private",
 				},
