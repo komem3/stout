@@ -71,6 +71,11 @@ func TestStType2Json(t *testing.T) {
 						IDString: "string",
 					},
 					Integer: 1,
+					ArrayEmbbad: ArrayEmbbad{
+						{
+							IDString: "string",
+						},
+					},
 					PString: func(str PString) *PString { return &str }("string"),
 					PEmb: &PEmb{
 						Content: "string",
@@ -78,6 +83,11 @@ func TestStType2Json(t *testing.T) {
 					},
 					OtherPkg: &testutil.OtherPkg{
 						PkgContent: "string",
+					},
+					ArrayPEmbbad: &ArrayPEmbbad{
+						{
+							PkgContent: "string",
+						},
 					},
 					private: "private",
 				},

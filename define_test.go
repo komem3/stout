@@ -5,6 +5,9 @@ import (
 	"stout/internal/testutil"
 )
 
+type ArrayEmbbad []Embbading
+type ArrayPEmbbad []*testutil.OtherPkg
+
 type Embbading struct {
 	IDString string
 }
@@ -35,10 +38,17 @@ type SampleJson struct {
 	Uinter    Integer
 	Embbading
 	Integer
+	ArrayEmbbad
 	*PString
 	*PEmb
 	*testutil.OtherPkg
+	*ArrayPEmbbad
 	private string
+}
+
+type ArrayJson struct {
+	IDs  []int64
+	PInt []*uint
 }
 
 func pStr(s string) *string { return &s }

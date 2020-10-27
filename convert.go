@@ -102,7 +102,7 @@ func convertMap(fset *token.FileSet, imap importMap, st *ast.StructType) (orderD
 			switch v := f.Type.(type) {
 			case *ast.Ident:
 				ident = v
-			case *ast.StarExpr:
+			case *ast.StarExpr: // pointer
 				if selExpr, ok := v.X.(*ast.SelectorExpr); ok {
 					ident := selExpr.X.(*ast.Ident)
 					ds, err := findStructDefine(fset, imap[ident.Name], selExpr.Sel.Name)
@@ -143,6 +143,25 @@ func convertMap(fset *token.FileSet, imap importMap, st *ast.StructType) (orderD
 					defines = append(defines,
 						getStructDefine(d.field, tag, d.typ, d.define, nil))
 				}
+			case *ast.ArrayType: // type array
+				if ptr, ok := v.Elt.(*ast.StarExpr); ok { // pointer
+					sel := ptr.X.(*ast.SelectorExpr)
+					arrayIdent := sel.X.(*ast.Ident)
+					ds, err := findStructDefine(fset, imap[arrayIdent.Name], sel.Sel.Name)
+					if err != nil {
+						return nil, err
+					}
+					defines = append(defines,
+						getStructDefine(ident.Name, tag, ident.Name, ds, make([]interface{}, 1)))
+					continue
+				}
+				arrayident := v.Elt.(*ast.Ident)
+				ds, err := convertMap(fset, imap, arrayident.Obj.Decl.(*ast.TypeSpec).Type.(*ast.StructType))
+				if err != nil {
+					return nil, err
+				}
+				defines = append(defines,
+					getStructDefine(ident.Name, tag, ident.Name, ds, make([]interface{}, 1)))
 			default:
 				panic(fmt.Sprintf("unexpected type: %#v", spec.Type))
 			}
