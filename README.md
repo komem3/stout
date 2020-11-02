@@ -12,15 +12,13 @@ go get github.com/komem3/stout
 
 ```shell
 $ stout -h
-Usage of stout:
-  -no-format
-    	Not format.
+usage: stout -path $struct_path [-no-format] $struct_name
+options:
   -path string
-    	Definetion file. (required)
-  -type string
-    	Target struct type. (required)
-
-$ stout -path ./define_test.go -type SampleJson
+        File path of defined struct. (required)
+  -no-format bool
+        Not format the output json.
+$ stout -path ./define_test.go SampleJson
 ```
 
 ## Caution
