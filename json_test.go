@@ -18,8 +18,8 @@ func TestStType2Json(t *testing.T) {
 			stType string
 		}
 		want struct {
-			outStruct interface{}
-			err       error
+			out interface{}
+			err error
 		}
 	)
 	tests := []struct {
@@ -28,70 +28,238 @@ func TestStType2Json(t *testing.T) {
 		want  want
 	}{
 		{
-			"SampleJson",
+			"built-in types",
 			given{
 				path:   "./define_test.go",
-				stType: "SampleJson",
+				stType: "BuiltInTypes",
 			},
 			want{
-				outStruct: SampleJson{
+				out: BuiltInTypes{
+					Bool:    true,
+					Byte:    1,
+					Error:   nil,
+					Float32: 1.1,
+					Float64: 1.1,
+					Int16:   1,
+					Int32:   1,
+					Int64:   1,
+					Int8:    1,
+					Rune:    1,
+					String:  "string",
+					Uint:    1,
+					Uint16:  1,
+					Uint32:  1,
+					Uint64:  1,
+					Uint8:   1,
+					Uintptr: 1,
+				},
+			},
+		},
+		{
+			"Not Struct(int)",
+			given{
+				"./define_test.go",
+				"Integer",
+			},
+			want{
+				out: Integer(1),
+			},
+		},
+		{
+			"Not Struct(array)",
+			given{
+				"./define_test.go",
+				"ArraySamePkg",
+			},
+			want{
+				out: ArraySamePkg{
+					{
+						IDString: "string",
+					},
+				},
+			},
+		},
+		{
+			"SimpleStruct",
+			given{
+				path:   "./define_test.go",
+				stType: "SimpleStruct",
+			},
+			want{
+				out: SimpleStruct{
+					pfield: 1,
+					IntF:   1,
+					PstrF:  func(str string) *PString { s := PString(str); return &s }("string"),
+					SameF: SamePkg{
+						IDString: "string",
+					},
+					PSameF: &PtrSamePkg{
+						Content: "string",
+						Next:    "string",
+					},
+					ArraySameF: []SamePkg{
+						{
+							IDString: "string",
+						},
+					},
+					ArrayPtrSameF: []*PtrSamePkg{
+						{
+							Content: "string",
+							Next:    "string",
+						},
+					},
+					PtrArraySameF: &PtrArraySamePkg{
+						{
+							IDString: "string",
+						},
+					},
+					OtherIntF:    1,
+					PrtOtherStrF: func(str string) *testutil.PtrOtherString { s := testutil.PtrOtherString(str); return &s }("string"),
+					OtherF: testutil.OtherPkg{
+						PkgContent: "string",
+					},
+					PtrOtherF: &testutil.PtrOtherPkg{
+						PkgContentDiff: "string",
+					},
+					OtherArryF: []testutil.OtherPkg{
+						{
+							PkgContent: "string",
+						},
+					},
+					OtherArrayPtrF: []*testutil.PtrOtherPkg{
+						{
+							PkgContentDiff: "string",
+						},
+					},
+					PrtOtherArrayF: &testutil.PtrOtherArraySamePkg{
+						{
+							PkgContent: "string",
+						},
+					},
+					CombinedF: CombineCase{
+						CombindContent: "string",
+					},
+					AstF: ast.ArrayType{
+						Lbrack: 1,
+						Len:    nil,
+						Elt:    nil,
+					},
+				},
+			},
+		},
+		{
+			"Emmbaddings",
+			given{
+				path:   "./define_test.go",
+				stType: "Emmbaddings",
+			},
+			want{
+				out: Emmbaddings{
+					int:     1,
+					private: 1,
+					Integer: 1,
+					PString: func(str string) *PString { s := PString(str); return &s }("string"),
+					SamePkg: SamePkg{
+						IDString: "string",
+					},
+					PtrSamePkg: &PtrSamePkg{
+						Content: "string",
+						Next:    "string",
+					},
+					ArraySamePkg: []SamePkg{
+						{
+							IDString: "string",
+						},
+					},
+					ArrayPtrSampePkg: []*PtrSamePkg{
+						{
+							Content: "string",
+							Next:    "string",
+						},
+					},
+					PtrArraySamePkg: &PtrArraySamePkg{
+						{
+							IDString: "string",
+						},
+					},
+					OtherInteger:   1,
+					PtrOtherString: func(str string) *testutil.PtrOtherString { s := testutil.PtrOtherString(str); return &s }("string"),
+					OtherPkg: testutil.OtherPkg{
+						PkgContent: "string",
+					},
+					PtrOtherPkg: &testutil.PtrOtherPkg{
+						PkgContentDiff: "string",
+					},
+					OtherArraySamePkg: []testutil.OtherPkg{
+						{
+							PkgContent: "string",
+						},
+					},
+					OtherArrayPtrSampePkg: []*testutil.PtrOtherPkg{
+						{
+							PkgContentDiff: "string",
+						},
+					},
+					PtrOtherArraySamePkg: &testutil.PtrOtherArraySamePkg{
+						{
+							PkgContent: "string",
+						},
+					},
+					CombineCase: CombineCase{
+						CombindContent: "string",
+					},
+					ArrayType: ast.ArrayType{
+						Lbrack: 1,
+						Len:    nil,
+						Elt:    nil,
+					},
+				},
+			},
+		},
+		{
+			"json tag",
+			given{
+				path:   "./define_test.go",
+				stType: "JsonTag",
+			},
+			want{
+				out: JsonTag{
 					ID:      1,
 					Content: "string",
 					Tag:     1,
 					Ignore:  1,
 					Hyphen:  1,
-					PStr:    pStr("string"),
-					Pointer: &Embbading{
-						IDString: "string",
-					},
-					Struct: Embbading{
-						IDString: "string",
-					},
-					Array: []string{"string"},
-					ArraySct: []Embbading{
-						{
-							IDString: "string",
-						},
-					},
-					ArrayPSct: []*Embbading{
-						{
-							IDString: "string",
-						},
-					},
-					Other: ast.ArrayType{
-						Lbrack: 1,
-						Len:    nil,
-						Elt:    nil,
-					},
-					Internal: testutil.OtherPkg{
-						PkgContent: "string",
-					},
-					Uinter: 1,
-					Embbading: Embbading{
-						IDString: "string",
-					},
-					Integer: 1,
-					ArrayEmbbad: ArrayEmbbad{
-						{
-							IDString: "string",
-						},
-					},
-					PString: func(str PString) *PString { return &str }("string"),
-					PEmb: &PEmb{
-						Content: "string",
-						Next:    "string",
-					},
-					OtherPkg: &testutil.OtherPkg{
-						PkgContent: "string",
-					},
-					ArrayPEmbbad: &ArrayPEmbbad{
-						{
-							PkgContent: "string",
-						},
-					},
-					private: "private",
+					Bool:    true,
+					Byte:    1,
+					Error:   nil,
+					Float32: 1.1,
+					Float64: 1.1,
+					Int16:   1,
+					Int32:   1,
+					Int64:   1,
+					Int8:    1,
+					Rune:    1,
+					String:  "string",
+					Uint:    1,
+					Uint16:  1,
+					Uint32:  1,
+					Uint64:  1,
+					Uint8:   1,
+					Uintptr: 1,
 				},
-				err: nil,
+			},
+		},
+		{
+			"duplicate fileds",
+			given{
+				path:   "./define_test.go",
+				stType: "DuplicateFields",
+			},
+			want{
+				out: DuplicateFields{
+					Field:     1,
+					Duplicate: "string",
+				},
 			},
 		},
 	}
@@ -110,7 +278,7 @@ func TestStType2Json(t *testing.T) {
 					encoder.SetIndent("", "  ")
 				}
 
-				if err := encoder.Encode(tt.want.outStruct); err != nil {
+				if err := encoder.Encode(tt.want.out); err != nil {
 					t.Fatal(err)
 				}
 
@@ -119,7 +287,8 @@ func TestStType2Json(t *testing.T) {
 				if diff := cmp.Diff(err, tt.want.err, cmpopts.EquateErrors()); diff != "" {
 					t.Errorf("error: got(-) want(+)\n%s\n", diff)
 				}
-				if diff := cmp.Diff(got.Bytes(), want.Bytes()); diff != "" {
+				if diff := cmp.Diff(got.String(), want.String()); diff != "" {
+					t.Log(got.String())
 					t.Errorf("resutl: got(-) want(+)\n%s\n", diff)
 				}
 			}
