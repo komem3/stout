@@ -8,21 +8,32 @@ import (
 	"time"
 )
 
-var srcPath = flag.String("path", "", "Definetion file. (required)")
-var fromSt = flag.String("type", "", "Target struct type. (required)")
-var noformat = flag.Bool("no-format", false, "Not format.")
+var srcPath = flag.String("path", "", "")
+var noformat = flag.Bool("no-format", false, "")
 
 var now = time.Now()
 
+const usage = `usage: stout -path $struct_path [-no-format] $struct_name
+options:
+  -path string
+        File path of defined struct. (required)
+  -no-format bool
+        Not format the output json.
+`
+
 func main() {
+	flag.Usage = func() { fmt.Fprint(os.Stderr, usage) }
 	flag.Parse()
-	if *srcPath == "" || *fromSt == "" {
-		fmt.Printf("%v, %v\n", srcPath, fromSt)
-		flag.Usage()
-		os.Exit(1)
+	fromSt := flag.Arg(0)
+
+	if fromSt == "" {
+		Fatalf("required target struct name.\n%s", usage)
+	}
+	if *srcPath == "" {
+		Fatalf("required target struct file path.\n%s", usage)
 	}
 
-	op := newJsonOption(*srcPath, *fromSt, *noformat)
+	op := newJsonOption(*srcPath, fromSt, *noformat)
 	writer := bufio.NewWriter(os.Stdout)
 	if err := stType2Json(writer, op); err != nil {
 		Fatalf(err.Error())
