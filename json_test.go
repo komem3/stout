@@ -257,8 +257,31 @@ func TestStType2Json(t *testing.T) {
 			},
 			want{
 				out: DuplicateFields{
-					Field:     1,
-					Duplicate: "string",
+					Field: 1,
+					PtrSamePkg: PtrSamePkg{
+						Content: "string",
+						Next:    "string",
+					},
+					Next: 1,
+					SamePkg: SamePkg{
+						IDString: "string",
+					},
+					EmbJSONTag: EmbJSONTag{
+						Name: true,
+					},
+					NestParent: NestParent{
+						Family: "string",
+						EmbJSONTag: EmbJSONTag{
+							Name: true,
+						},
+						NestChild: NestChild{
+							Brother: 1,
+							Sister:  "string",
+						},
+					},
+					Content: "string",
+					SameTag: "string",
+					SamTag:  1,
 				},
 			},
 		},

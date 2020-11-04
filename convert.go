@@ -21,10 +21,10 @@ var (
 
 func StType2Map(path, stType string) (orderDefine, error) {
 	fset := token.NewFileSet()
-	return genOrderDefine(fset, path, stType)
+	return genOrderDefine(fset, path, stType, 0)
 }
 
-func genOrderDefine(fset *token.FileSet, path, stType string) (orderDefine, error) {
+func genOrderDefine(fset *token.FileSet, path, stType string, ktype keyType) (orderDefine, error) {
 	f, err := parser.ParseFile(fset, path, nil, 0)
 	if err != nil {
 		return nil, err
@@ -60,11 +60,11 @@ func genOrderDefine(fset *token.FileSet, path, stType string) (orderDefine, erro
 
 	switch v := fromSpec.Type.(type) {
 	case *ast.StructType:
-		return convertMap(fset, imports, v)
+		return convertMap(fset, imports, v, ktype)
 	case *ast.InterfaceType:
 		return nil, fmt.Errorf("%w: %s", ErrInterfaceType, stType)
 	case *ast.Ident:
-		return orderDefine{getStructDefine("", "", stType, basicMap[v.Name], nil)}, nil
+		return orderDefine{getStructDefine("", "", stType, basicMap[v.Name], nil, ktype)}, nil
 	case *ast.ArrayType:
 		var ident *ast.Ident
 		if star, ok := v.Elt.(*ast.StarExpr); ok {
@@ -72,17 +72,17 @@ func genOrderDefine(fset *token.FileSet, path, stType string) (orderDefine, erro
 		} else {
 			ident = v.Elt.(*ast.Ident)
 		}
-		ds, err := identToDefines(fset, imports, ident, "", "", nil)
+		ds, err := identToDefines(fset, imports, ident, "", "", nil, ktype)
 		if err != nil {
 			return nil, err
 		}
-		return orderDefine{getStructDefine("", "", stType, ds, allocArray())}, nil
+		return orderDefine{getStructDefine("", "", stType, ds, allocArray(), ktype)}, nil
 	default:
 		return nil, fmt.Errorf("%#v is not sport type", fromSpec.Type)
 	}
 }
 
-func convertMap(fset *token.FileSet, imap importMap, st *ast.StructType) (orderDefine, error) {
+func convertMap(fset *token.FileSet, imap importMap, st *ast.StructType, ktype keyType) (orderDefine, error) {
 	var defines orderDefine
 	for _, f := range st.Fields.List {
 		var tag string
@@ -100,7 +100,7 @@ func convertMap(fset *token.FileSet, imap importMap, st *ast.StructType) (orderD
 				ident = v
 			case *ast.SelectorExpr: // other package
 				ident := v.X.(*ast.Ident)
-				ds, err := findStructDefine(fset, imap[ident.Name], v.Sel.Name)
+				ds, err := findStructDefine(fset, imap[ident.Name], v.Sel.Name, ktype+exactType)
 				if err != nil {
 					return nil, err
 				}
@@ -118,7 +118,7 @@ func convertMap(fset *token.FileSet, imap importMap, st *ast.StructType) (orderD
 				// built-in type or private type
 				continue
 			}
-			ds, err := identToDefines(fset, imap, ident, tag, "", nil)
+			ds, err := identToDefines(fset, imap, ident, tag, "", nil, ktype+exactTagType)
 			if err != nil {
 				return nil, err
 			}
@@ -153,12 +153,12 @@ func convertMap(fset *token.FileSet, imap importMap, st *ast.StructType) (orderD
 			array = make(arrayDefines, 1)
 		case *ast.SelectorExpr: // other package type
 			ident = v.X.(*ast.Ident)
-			ds, err := findStructDefine(fset, imap[ident.Name], v.Sel.Name)
+			ds, err := findStructDefine(fset, imap[ident.Name], v.Sel.Name, ktype+normalType)
 			if err != nil {
 				return nil, err
 			}
 			typ := ident.Name + "." + v.Sel.Name
-			defines = append(defines, getStructDefine(fname, tag, typ, ds, array))
+			defines = append(defines, getStructDefine(fname, tag, typ, ds, array, ktype+normalType))
 			continue
 		default:
 			panic(fmt.Sprintf("unexpected type: %#v", f.Type))
@@ -166,11 +166,11 @@ func convertMap(fset *token.FileSet, imap importMap, st *ast.StructType) (orderD
 
 		if basicValue, ok := basicMap[ident.Name]; ok { // built-in type
 			defines = append(defines,
-				getStructDefine(fname, tag, ident.Name, basicValue, array))
+				getStructDefine(fname, tag, ident.Name, basicValue, array, ktype+normalType))
 			continue
 		}
 
-		ds, err := identToDefines(fset, imap, ident, tag, fname, array)
+		ds, err := identToDefines(fset, imap, ident, tag, fname, array, ktype+normalType)
 		if err != nil {
 			return nil, err
 		}
@@ -179,70 +179,72 @@ func convertMap(fset *token.FileSet, imap importMap, st *ast.StructType) (orderD
 	return defines, nil
 }
 
-func getStructDefine(fname, tag, typ string, value json.Marshaler, array arrayDefines) fieldDefine {
+func getStructDefine(fname, tag, typ string, value json.Marshaler, array arrayDefines, ktype keyType) fieldDefine {
 	if len(array) != 0 {
 		array[0] = value
 		return fieldDefine{
-			field:  fname,
-			tag:    tag,
-			typ:    typ,
-			define: array,
-			enable: true,
+			field:   fname,
+			tag:     tag,
+			typ:     typ,
+			define:  array,
+			enable:  true,
+			keyType: ktype,
 		}
 	}
 	return fieldDefine{
-		field:  fname,
-		tag:    tag,
-		typ:    typ,
-		define: value,
-		enable: true,
+		field:   fname,
+		tag:     tag,
+		typ:     typ,
+		define:  value,
+		enable:  true,
+		keyType: ktype,
 	}
 }
 
-func identToDefines(fset *token.FileSet, imap importMap, ident *ast.Ident, tag string, fname string, array arrayDefines) (orderDefine, error) {
+func identToDefines(fset *token.FileSet, imap importMap, ident *ast.Ident, tag string, fname string, array arrayDefines, ktype keyType) (orderDefine, error) {
 	spec := ident.Obj.Decl.(*ast.TypeSpec)
 	switch v := spec.Type.(type) {
 	case *ast.Ident: // type built-in type
 		if fname != "" {
-			return orderDefine{getStructDefine(fname, tag, v.Name, basicMap[v.Name], array)}, nil
+			return orderDefine{getStructDefine(fname, tag, v.Name, basicMap[v.Name], array, ktype)}, nil
 		}
-		return orderDefine{getStructDefine(ident.Name, tag, v.Name, basicMap[v.Name], nil)}, nil
+		return orderDefine{getStructDefine(ident.Name, tag, v.Name, basicMap[v.Name], nil, ktype)}, nil
 
 	case *ast.StructType: // type struct
-		ds, err := convertMap(fset, imap, v)
+		ds, err := convertMap(fset, imap, v, ktype)
 		if err != nil {
 			return nil, err
 		}
 		if fname != "" {
-			return orderDefine{getStructDefine(fname, tag, ident.Name, ds, array)}, nil
+			return orderDefine{getStructDefine(fname, tag, ident.Name, ds, array, ktype)}, nil
 		}
 		return ds, nil
 	case *ast.SelectorExpr: // other package
 		ident := v.X.(*ast.Ident)
-		ds, err := findStructDefine(fset, imap[ident.Name], v.Sel.Name)
+		ds, err := findStructDefine(fset, imap[ident.Name], v.Sel.Name, ktype)
 		if err != nil {
 			return nil, err
 		}
 		if fname != "" {
-			return orderDefine{getStructDefine(fname, tag, ident.Name, ds, array)}, nil
+			return orderDefine{getStructDefine(fname, tag, ident.Name, ds, array, ktype)}, nil
 		}
 		return ds, nil
 	case *ast.InterfaceType: // type interface
-		return orderDefine{getStructDefine(fname, tag, ident.Name, nil, array)}, nil
+		return orderDefine{getStructDefine(fname, tag, ident.Name, nil, array, ktype)}, nil
 	case *ast.ArrayType: // type array
 		var arrayident *ast.Ident
 		if ptr, ok := v.Elt.(*ast.StarExpr); ok { // pointer
 			switch x := ptr.X.(type) {
 			case *ast.SelectorExpr:
 				arrayIdent := x.X.(*ast.Ident)
-				ds, err := findStructDefine(fset, imap[arrayIdent.Name], x.Sel.Name)
+				ds, err := findStructDefine(fset, imap[arrayIdent.Name], x.Sel.Name, ktype)
 				if err != nil {
 					return nil, err
 				}
 				if fname != "" {
-					return orderDefine{getStructDefine(fname, tag, ident.Name, ds, allocArray())}, nil
+					return orderDefine{getStructDefine(fname, tag, ident.Name, ds, allocArray(), ktype)}, nil
 				}
-				return orderDefine{getStructDefine(ident.Name, tag, ident.Name, ds, allocArray())}, nil
+				return orderDefine{getStructDefine(ident.Name, tag, ident.Name, ds, allocArray(), ktype)}, nil
 			case *ast.Ident:
 				arrayident = x
 			default:
@@ -251,20 +253,20 @@ func identToDefines(fset *token.FileSet, imap importMap, ident *ast.Ident, tag s
 		} else {
 			arrayident = v.Elt.(*ast.Ident)
 		}
-		ds, err := convertMap(fset, imap, arrayident.Obj.Decl.(*ast.TypeSpec).Type.(*ast.StructType))
+		ds, err := convertMap(fset, imap, arrayident.Obj.Decl.(*ast.TypeSpec).Type.(*ast.StructType), ktype)
 		if err != nil {
 			return nil, err
 		}
 		if fname != "" {
-			return orderDefine{getStructDefine(fname, tag, ident.Name, ds, allocArray())}, nil
+			return orderDefine{getStructDefine(fname, tag, ident.Name, ds, allocArray(), ktype)}, nil
 		}
-		return orderDefine{getStructDefine(ident.Name, tag, ident.Name, ds, allocArray())}, nil
+		return orderDefine{getStructDefine(ident.Name, tag, ident.Name, ds, allocArray(), ktype)}, nil
 	default:
 		panic(fmt.Sprintf("unexpected type: %#v", spec.Type))
 	}
 }
 
-func findStructDefine(fset *token.FileSet, dir, typ string) (orderDefine, error) {
+func findStructDefine(fset *token.FileSet, dir, typ string, ktype keyType) (orderDefine, error) {
 	cfg := &packages.Config{
 		Mode: packages.LoadFiles | packages.LoadImports,
 		Fset: fset,
@@ -282,7 +284,7 @@ func findStructDefine(fset *token.FileSet, dir, typ string) (orderDefine, error)
 		return nil, fmt.Errorf("%s package is not found", dir)
 	}
 	for _, f := range pkgs[0].GoFiles {
-		define, err := genOrderDefine(fset, f, typ)
+		define, err := genOrderDefine(fset, f, typ, ktype)
 		if errors.Is(err, ErrNotFoundStruct) {
 			continue
 		}

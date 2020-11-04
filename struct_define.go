@@ -6,12 +6,22 @@ import (
 	"regexp"
 )
 
+type keyType int
+
+const (
+	tagType keyType = iota
+	normalType
+	exactTagType
+	exactType
+)
+
 type fieldDefine struct {
-	field  string
-	typ    string
-	tag    string
-	define json.Marshaler
-	enable bool
+	field   string
+	typ     string
+	tag     string
+	define  json.Marshaler
+	enable  bool
+	keyType keyType
 }
 
 func (f fieldDefine) empty() bool {
@@ -93,6 +103,7 @@ func (o orderDefine) MarshalJSON() ([]byte, error) {
 				default:
 					if matches[1] != "" {
 						o[i].field = matches[1]
+						o[i].keyType -= 1
 					}
 				}
 			}
@@ -100,9 +111,20 @@ func (o orderDefine) MarshalJSON() ([]byte, error) {
 		field := o[i].field
 		existIndex, ok := existsMap[field]
 		if ok {
-			o[existIndex].enable = false
+			switch {
+			case o[existIndex].keyType > o[i].keyType:
+				existsMap[field] = i
+				o[existIndex].enable = false
+			case o[existIndex].keyType == o[i].keyType:
+				existsMap[field] = i
+				o[i].enable = false
+				o[existIndex].enable = false
+			case o[existIndex].keyType < o[i].keyType:
+				o[i].enable = false
+			}
+		} else {
+			existsMap[field] = i
 		}
-		existsMap[field] = i
 	}
 	return notDuplicateMarshall(o)
 }
@@ -110,20 +132,21 @@ func (o orderDefine) MarshalJSON() ([]byte, error) {
 func notDuplicateMarshall(o orderDefine) ([]byte, error) {
 	w := new(bytes.Buffer)
 	jw := json.NewEncoder(w)
-	_, err := w.WriteRune('{')
-	if err != nil {
-		return nil, err
-	}
+	next := '{'
 	if len(o) == 1 && o[0].field == "" {
 		return json.Marshal(o[0].define)
 	}
-	for i, d := range o {
+	for _, d := range o {
 		if d.empty() {
 			continue
 		}
+		_, err := w.WriteRune(next)
+		if err != nil {
+			return nil, err
+		}
 		field := d.field
 		define := d.define
-		_, err := w.WriteString("\"" + field + "\":")
+		_, err = w.WriteString("\"" + field + "\":")
 		if err != nil {
 			return nil, err
 		}
@@ -131,15 +154,17 @@ func notDuplicateMarshall(o orderDefine) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		if i == len(o)-1 {
-			continue
+		if next != ',' {
+			next = ','
 		}
-		_, err = w.WriteRune(',')
+	}
+	if next != ',' {
+		_, err := w.WriteRune(next)
 		if err != nil {
 			return nil, err
 		}
 	}
-	_, err = w.WriteRune('}')
+	_, err := w.WriteRune('}')
 	if err != nil {
 		return nil, err
 	}
