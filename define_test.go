@@ -127,9 +127,31 @@ type Emmbaddings struct {
 	ast.ArrayType
 }
 
+type EmbJSONTag struct {
+	Name bool `json:"IDString"`
+}
+
+type NestParent struct {
+	Family string
+	NestChild
+	EmbJSONTag
+}
+
+type NestChild struct {
+	Brother int    `json:"Family"`
+	Sister  string `json:"IDString"`
+}
+
 type DuplicateFields struct {
-	Field     int
-	Duplicate string `json:"Field"`
+	Field int `json:"Content"`
+	PtrSamePkg
+	Next int
+	SamePkg
+	EmbJSONTag
+	NestParent
+	Content string
+	SameTag string `json:"sametag"`
+	SamTag  int    `json:"sametag"`
 }
 
 func pStr(s string) *string { return &s }
