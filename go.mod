@@ -1,4 +1,4 @@
-module stout
+module github.com/komem3/stout
 
 go 1.15
 
